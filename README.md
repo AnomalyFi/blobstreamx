@@ -1,3 +1,43 @@
+# Setting up Blobstream X for SEQ.
+
+This is a computationally intensive task:
+AWS instance recomended: r6a.16xlarge or above
+
+clone the patched blobstream X:
+```shell
+   git clone https://github.com/anomalyFi/blobstreamx.git
+```
+download artifacts from [here](https://hackmd.io/@succinctlabs/HJE7XRrup#Download-Blobstream-X-Plonky2x-Circuits): @todo remove this and make a single artifact bucket
+
+download the docker image from [patched succinctx repo](https://github.com/AnomalyFi/succinctx/blob/main/client/src/Dockerfile) and build the image with the name `local_prover`
+```shell 
+docker build . -t local_prover
+```
+download stark-snark verifer: 
+```shell
+curl -L https://public-circuits.s3.amazonaws.com/verifier-build13.tar.gz | tar xz
+```
+Build the circuits locally or download the circuits [from]() @todo upload binaries and add link.
+```shell
+mkdir -p build && RUST_LOG=debug cargo run --bin header_range_1024 --release build && mv ./target/release/header_range_1024 ./build/header_range_1024
+
+RUST_LOG=debug cargo run --bin next_header --release build && mv ./target/release/next_header ./build/next_header
+```
+replace header_range_1024 in artifacts/header-range-1024 with the header_range_1024 file in build
+replace next_header in artifacts/next-header with next_header file in build
+clone succinctx repo and build the verifier or download from [here]() @todo upload the binaries
+```shell
+   git clone https://github.com/anomalyfi/succinctx.git && cd succinctx/plonky2x/verifier
+   go build
+```
+replace the verifier in artifacts/verifier-build with verifier built now in succinctx folder.
+copy Verifier.sol file in artifacts/verifier-build and place it in the verifier-build folder.
+complete the .env file
+
+and then run the local prover and local relayer:
+```shell
+cargo run --bin blobstreamx --release
+```
 # Blobstream X
 
 ![Blobstream X](https://pbs.twimg.com/media/F85boT-bYAAF1hM?format=jpg&name=4096x4096)

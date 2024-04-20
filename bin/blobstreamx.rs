@@ -1,5 +1,5 @@
-use std::env;
 use std::str::FromStr;
+use std::{env, path};
 
 use alloy_primitives::{Address, Bytes, FixedBytes, B256};
 use alloy_sol_types::{sol, SolType};
@@ -26,6 +26,7 @@ type NextHeaderInputTuple = sol! { tuple(uint64, bytes32) };
 
 type HeaderRangeInputTuple = sol! { tuple(uint64, bytes32, uint64) };
 
+const LOCAL_PROOF_FOLDER: &str = "./proofs";
 struct BlobstreamXOperator {
     config: BlobstreamXConfig,
     ethereum_rpc_url: String,
@@ -257,21 +258,26 @@ impl BlobstreamXOperator {
                         Ok(request_id) => {
                             info!("Header range request submitted: {}", request_id);
 
-                            // If in local mode, this will submit the request on-chain.
-                            let res = self
-                                .client
-                                .relay_proof(
-                                    request_id,
-                                    Some(self.ethereum_rpc_url.as_ref()),
-                                    self.wallet.clone(),
-                                    self.gateway_address.as_deref(),
-                                )
-                                .await;
-                            match res {
-                                Ok(_) => info!("Relayed successfully!"),
-                                Err(e) => {
-                                    error!("Relay failed: {}", e);
-                                }
+                            let output_file =
+                                format!("{}/output_{}.json", LOCAL_PROOF_FOLDER, request_id);
+                            let proof_file =
+                                format!("{}/proof_raw_{}.json", LOCAL_PROOF_FOLDER, request_id);
+
+                            std::fs::copy(output_file, "./relay/output.json").unwrap();
+                            std::fs::copy(proof_file, "./relay/proof.bin").unwrap();
+                            let mut relay = std::process::Command::new(
+                                path::Path::new("./relay").join("relay"),
+                            )
+                            .spawn()
+                            .expect("relay failed");
+                            let status = relay.wait().expect("failed to wait for relay");
+                            if status.success() {
+                                println!("proof relayed successfully!");
+                            } else {
+                                println!(
+                                    "proof relay failed with exit code: {}",
+                                    status.code().unwrap()
+                                );
                             }
                         }
                         Err(e) => {
